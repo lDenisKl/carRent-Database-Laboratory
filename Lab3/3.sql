@@ -68,3 +68,96 @@ GROUP BY ROLLUP (status, clientPassport);
 SELECT *
 FROM Client
 WHERE address NOT LIKE '%Москва%';
+
+
+
+-- 2 часть
+
+-- Рассчитать выручку пункта проката по датам с начала текущего месяца
+
+SELECT 
+    CAST(r.actualReturnDate AS DATE) AS return_date,
+    SUM(r.rentalCost) AS daily_revenue
+FROM Rental r
+WHERE 
+    r.status = 'Завершена'
+    AND r.actualReturnDate >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+    AND CAST(r.actualReturnDate AS DATE) < CAST(GETDATE() + 1 AS DATE)
+GROUP BY CAST(r.actualReturnDate AS DATE)
+ORDER BY return_date;
+
+--Для каждого типа и модели автомобиля вывести количество машин, имеющихся в фирме
+
+SELECT 
+    m.type AS car_type,
+    m.name AS model_name,
+    m.manufacturer,
+    COUNT(c.licensePlate) AS car_count
+FROM Model m
+LEFT JOIN Car c ON m.id = c.modelId
+GROUP BY m.type, m.name, m.manufacturer
+ORDER BY m.type, car_count DESC;
+
+-- Найти модели, не пользующиеся спросом (с начала текущего года на автомобили этих моделей не было заключено ни одной сделки)
+
+SELECT 
+    m.id,
+    m.name,
+    m.type,
+    m.manufacturer
+FROM Model m
+WHERE m.id NOT IN (
+    SELECT DISTINCT c.modelId
+    FROM Car c
+    JOIN Rental r ON c.licensePlate = r.carLicensePlate
+    WHERE 
+        r.startDate >= DATEFROMPARTS(YEAR(GETDATE()), 1, 1)
+        AND r.status IN ('Активна', 'Завершена')
+)
+ORDER BY m.manufacturer, m.name;
+
+-- Найти постоянных клиентов (пользовавшихся услугами фирмы более 3-х раз) 
+--и рассчитать для них размер скидки 
+--(напр., если клиент берет машину в 4-й раз – скидка 2%, в 6-й – 4%, в 8-й – 6%,
+-- но если клиент был когда-либо оштрафован, то скидка не предоставляется)
+
+WITH ClientStats AS (
+    SELECT 
+        c.passport,
+        c.fullName,
+        COUNT(r.id) AS rental_count,
+        SIGN(COUNT(rf.rentalId)) AS has_fines
+    FROM Client c
+    JOIN RentalOrder ro ON c.passport = ro.clientPassport
+    JOIN Rental r ON ro.id = r.rentalOrderId
+    LEFT JOIN RentalFine rf ON r.id = rf.rentalId
+    WHERE r.status IN ('Завершена', 'Активна')
+    GROUP BY c.passport, c.fullName
+    HAVING COUNT(r.id) > 3
+)
+SELECT 
+    passport,
+    fullName,
+    rental_count,
+    has_fines,
+    (2 * ((rental_count >= 4) + (rental_count >= 6) + (rental_count >= 8))) * (1 - has_fines) AS discount_percent
+FROM ClientStats
+ORDER BY rental_count DESC;
+
+-- Найти клиентов, наиболее часто пользующихся услугами проката, 
+-- и выдать для них общую сумму заключеннных сделок
+
+SELECT 
+    c.passport,
+    c.fullName,
+    c.phone,
+    COUNT(DISTINCT ro.id) AS orders_count,
+    COUNT(r.id) AS rentals_count,
+    SUM(COALESCE(r.rentalCost, 0)) AS total_spent
+FROM Client c
+JOIN RentalOrder ro ON c.passport = ro.clientPassport
+JOIN Rental r ON ro.id = r.rentalOrderId
+WHERE r.status IN ('Завершена', 'Активна')
+GROUP BY c.passport, c.fullName, c.phone
+HAVING COUNT(r.id) > 0
+ORDER BY total_spent DESC, rentals_count DESC;
