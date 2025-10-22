@@ -74,7 +74,7 @@ WHERE address NOT LIKE '%Москва%';
 -- 2 часть
 
 -- Рассчитать выручку пункта проката по датам с начала текущего месяца
-
+use [Cars1]
 SELECT 
     CAST(r.actualReturnDate AS DATE) AS return_date,
     SUM(r.rentalCost) AS daily_revenue
@@ -88,6 +88,7 @@ ORDER BY return_date;
 
 --Для каждого типа и модели автомобиля вывести количество машин, имеющихся в фирме
 
+use [Cars1]
 SELECT 
     m.type AS car_type,
     m.name AS model_name,
@@ -100,6 +101,7 @@ ORDER BY m.type, car_count DESC;
 
 -- Найти модели, не пользующиеся спросом (с начала текущего года на автомобили этих моделей не было заключено ни одной сделки)
 
+use [Cars1]
 SELECT 
     m.id,
     m.name,
@@ -121,6 +123,7 @@ ORDER BY m.manufacturer, m.name;
 --(напр., если клиент берет машину в 4-й раз – скидка 2%, в 6-й – 4%, в 8-й – 6%,
 -- но если клиент был когда-либо оштрафован, то скидка не предоставляется)
 
+use [Cars1]
 WITH ClientStats AS (
     SELECT 
         c.passport,
@@ -140,13 +143,20 @@ SELECT
     fullName,
     rental_count,
     has_fines,
-    (2 * ((rental_count >= 4) + (rental_count >= 6) + (rental_count >= 8))) * (1 - has_fines) AS discount_percent
+    CASE
+	    WHEN has_fines = 1 Then 0
+	    WHEN rental_count = 4 Then 2
+	    WHEN rental_count = 6 Then 4
+	    WHEN rental_count >= 8 Then 6
+	Else 0
+	END AS discount_percent
 FROM ClientStats
 ORDER BY rental_count DESC;
 
 -- Найти клиентов, наиболее часто пользующихся услугами проката, 
 -- и выдать для них общую сумму заключеннных сделок
 
+use [Cars1]
 SELECT 
     c.passport,
     c.fullName,
