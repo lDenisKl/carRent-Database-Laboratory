@@ -64,6 +64,17 @@ SELECT
 FROM RentalOrder
 GROUP BY ROLLUP (status, clientPassport);
 
+-- Количество автомобилей по состоянию для каждого производителя
+SELECT 
+    m.manufacturer,
+    c.condition,
+    COUNT(*) as CarCount
+FROM Model m
+JOIN Car c ON m.id = c.modelId
+WHERE c.condition IN ('Идеальное', 'Хорошее')
+GROUP BY ALL m.manufacturer, c.condition
+ORDER BY m.manufacturer, c.condition;
+
 --1.5
 -- Найти всех клиентов, которые проживают не в Москве
 SELECT *
@@ -128,6 +139,20 @@ SELECT
     r.status as RentalStatus
 FROM Car c
 LEFT JOIN Rental r ON c.licensePlate = r.carLicensePlate AND r.status = 'Активна';
+
+-- Вывести все автомобили и информацию об их активных арендах
+SELECT 
+    c.licensePlate,
+    r.startDate,
+    r.plannedReturnDate,
+    r.rentalCost,
+    cl.fullName as ClientName,
+    r.status as RentalStatus
+FROM Car c
+LEFT JOIN Rental r ON c.licensePlate = r.carLicensePlate AND r.status = 'Активна'
+LEFT JOIN RentalOrder ro ON r.rentalOrderId = ro.id
+LEFT JOIN Client cl ON ro.clientPassport = cl.passport
+ORDER BY c.licensePlate;
 
 -- 2.4 
 -- Показать все возможные скидки и клиентов, которые ими владеют.
@@ -212,6 +237,18 @@ WHERE dailyPrice > (
     FROM Model
 );
 
+-- Модели, имеющиеся в идеальном состоянии
+SELECT 
+    name,
+    manufacturer
+FROM Model m
+WHERE EXISTS (
+    SELECT 1 
+    FROM Car c 
+    WHERE c.modelId = m.id 
+    AND c.condition = 'Идеальное'
+);
+
 -- 3.1
 -- Активные аренды с деталями
 CREATE VIEW ActiveRentalsView AS
@@ -246,18 +283,19 @@ SELECT * FROM ClientsWithDiscountsView;
 
 -- 3.2
 -- Получить количество аренд каждого клиента
-WITH ClientRentalCount AS (
+WITH ClientRentalStats AS (
     SELECT 
-        clientPassport,
-        COUNT(*) as RentalCount
-    FROM RentalOrder
-    GROUP BY clientPassport
+        c.passport,
+        c.fullName,
+        COUNT(ro.id) as RentalCount
+    FROM Client c
+    LEFT JOIN RentalOrder ro ON c.passport = ro.clientPassport
+    GROUP BY c.passport, c.fullName
 )
 SELECT 
-    c.fullName,
-    crc.RentalCount
-FROM Client c
-JOIN ClientRentalCount crc ON c.passport = crc.clientPassport;
+    fullName,
+    RentalCount
+FROM ClientRentalStats;
 
 -- Получить автомобили с их последней арендой
 WITH LastRental AS (
@@ -290,6 +328,7 @@ JOIN Model m ON c.modelId = m.id;
 -- Рейтинг клиентов по количеству заказов (с разделами)
 SELECT 
     fullName,
+    ro.status,
     COUNT(ro.id) as OrderCount,
     RANK() OVER (PARTITION BY ro.status ORDER BY COUNT(ro.id) DESC) as RankByStatus
 FROM Client c
@@ -324,6 +363,17 @@ ORDER BY type;
 SELECT passport FROM Client
 EXCEPT
 SELECT clientPassport FROM ClientDiscount;
+
+-- Модели, у которых есть автомобили и в идеальном и в хорошем состоянии
+SELECT 
+    m.name as ModelName,
+    m.manufacturer
+FROM Model m
+WHERE m.id IN (
+    SELECT modelId FROM Car WHERE condition = 'Идеальное'
+    INTERSECT
+    SELECT modelId FROM Car WHERE condition = 'Хорошее'
+);
 
 -- 6.1
 -- Проанализировать цены по категориям
