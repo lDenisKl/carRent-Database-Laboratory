@@ -35,48 +35,40 @@ BEGIN
       AND r.status IN ('Завершена', 'Активна');
 END;
 
-EXEC GetCarRentalClients @carLicensePlate = 'А001АА777';
+EXEC GetCarRentalClients @carLicensePlate = 'А001АИ777';
 
 ---------
 
-DROP PROCEDURE GetModelPopularityRating;
+DROP PROCEDURE IF EXISTS GetModelPopularityRating;
 
-CREATE PROCEDURE GetModelPopularityRating
-    @modelName NVARCHAR(50),
-    @popularityRating DECIMAL(10,2) OUTPUT
+CREATE OR ALTER PROCEDURE GetModelPopularityRating
+    @modelName NVARCHAR(50)
 AS
 BEGIN
-    DECLARE @totalRentals INT;
-    DECLARE @totalDays INT;
-    DECLARE @modelId INT;
-
-    SELECT @modelId = id FROM Model WHERE name = @modelName;
-
-    IF @modelId IS NOT NULL
-    BEGIN
-        -- Считаем общее количество аренд и дней аренды для модели
+    WITH ModelRanks AS (
         SELECT 
-            @totalRentals = COUNT(r.id),
-            @totalDays = SUM(DATEDIFF(DAY, r.startDate, 
-                CASE WHEN r.actualReturnDate IS NOT NULL THEN r.actualReturnDate 
-                     ELSE r.plannedReturnDate END))
-        FROM Rental r
-        JOIN Car c ON r.carLicensePlate = c.licensePlate
-        WHERE c.modelId = @modelId
-          AND r.status IN ('Завершена', 'Активна');
-
-        --  рейтинг популярности (аренды * дни)
-        SET @popularityRating = ISNULL(@totalRentals, 0) * ISNULL(@totalDays, 0);
-    END
-    ELSE
-    BEGIN
-        SET @popularityRating = 0;
-    END
+            m.name,
+            COUNT(r.id) * ISNULL(SUM(DATEDIFF(DAY, r.startDate, 
+                ISNULL(r.actualReturnDate, r.plannedReturnDate))), 0) as score,
+            RANK() OVER (ORDER BY COUNT(r.id) * ISNULL(SUM(DATEDIFF(DAY, r.startDate, 
+                ISNULL(r.actualReturnDate, r.plannedReturnDate))), 0) DESC) as position
+        FROM Model m
+        LEFT JOIN Car c ON m.id = c.modelId
+        LEFT JOIN Rental r ON c.licensePlate = r.carLicensePlate 
+            AND r.status IN ('Завершена', 'Активна')
+        GROUP BY m.name
+    )
+    
+    SELECT 
+        name as model,
+        score as popularity_score,
+        position as rank_position,
+        (SELECT COUNT(*) FROM ModelRanks) as total_models
+    FROM ModelRanks 
+    WHERE name = @modelName;
 END;
 
-DECLARE @rating DECIMAL(10,2);
-EXEC GetModelPopularityRating @modelName = 'Corolla', @popularityRating = @rating OUTPUT;
-SELECT @rating AS 'Рейтинг популярности';
+EXEC GetModelPopularityRating @modelName = 'Camry'
 
 --------
 
@@ -84,13 +76,11 @@ DROP PROCEDURE FindMostExpensiveRental;
 DROP PROCEDURE GetMostExpensiveRentalDetails;
 
 
-CREATE PROCEDURE FindMostExpensiveRental
-    @maxRentalCost DECIMAL(10,2) OUTPUT,
+CREATE OR ALTER PROCEDURE FindMostExpensiveRental
     @rentalOrderId INT OUTPUT
 AS
 BEGIN
     SELECT TOP 1 
-        @maxRentalCost = r.rentalCost,
         @rentalOrderId = r.rentalOrderId
     FROM Rental r
     WHERE r.rentalCost IS NOT NULL
@@ -98,34 +88,26 @@ BEGIN
     ORDER BY r.rentalCost DESC;
 END;
 
-CREATE PROCEDURE GetMostExpensiveRentalDetails
+CREATE Or ALTER PROCEDURE GetMostExpensiveRentalDetails
 AS
 BEGIN
-    DECLARE @maxCost DECIMAL(10,2);
     DECLARE @orderId INT;
 
-    EXEC FindMostExpensiveRental @maxCost OUTPUT, @orderId OUTPUT;
+    EXEC FindMostExpensiveRental @orderId OUTPUT;
 
-    IF @orderId IS NOT NULL
-    BEGIN
-        SELECT 
-            cl.fullName,
-            m.name,
-            m.manufacturer,
-            r.rentalCost,
-            r.startDate,
-            r.plannedReturnDate
-        FROM Rental r
-        JOIN RentalOrder ro ON r.rentalOrderId = ro.id
-        JOIN Client cl ON ro.clientPassport = cl.passport
-        JOIN Car c ON r.carLicensePlate = c.licensePlate
-        JOIN Model m ON c.modelId = m.id
-        WHERE r.rentalOrderId = @orderId;
-    END
-    ELSE
-    BEGIN
-        PRINT 'Не найдено завершенных аренд с указанной стоимостью.';
-    END
+    SELECT 
+        cl.fullName,
+        m.name,
+        m.manufacturer,
+        r.rentalCost,
+        r.startDate,
+        r.actualReturnDate
+    FROM Rental r
+    JOIN RentalOrder ro ON r.rentalOrderId = ro.id
+    JOIN Client cl ON ro.clientPassport = cl.passport
+    JOIN Car c ON r.carLicensePlate = c.licensePlate
+    JOIN Model m ON c.modelId = m.id
+    WHERE r.rentalOrderId = @orderId;
 END;
 
 
