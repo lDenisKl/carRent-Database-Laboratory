@@ -24,7 +24,7 @@ CREATE TABLE Car (
     year INT NOT NULL CHECK (year BETWEEN 1990 AND YEAR(GETDATE())),
     color NVARCHAR(20),
     condition NVARCHAR(20) NOT NULL CHECK (condition IN ('Идеальное', 'Хорошее', 'Удовлетворительное', 'Плохое')),
-    modelId INT NOT NULL FOREIGN KEY REFERENCES Model(id) ON DELETE CASCADE
+    modelId INT NOT NULL FOREIGN KEY REFERENCES Model(id) 
 );
 
 CREATE TABLE Client (
@@ -48,7 +48,7 @@ CREATE TABLE RentalOrder (
     createDate DATETIME2 NOT NULL DEFAULT GETDATE(),
     status NVARCHAR(20) NOT NULL CHECK (status IN ('Создан', 'Подтвержден', 'Активен', 'Завершен', 'Отменен')),
     totalPrice DECIMAL(10, 2) CHECK (totalPrice >= 0),
-    clientPassport NVARCHAR(20) NOT NULL FOREIGN KEY REFERENCES Client(passport) ON DELETE CASCADE
+    clientPassport NVARCHAR(20) NOT NULL FOREIGN KEY REFERENCES Client(passport) 
 );
 
 CREATE TABLE Rental (
@@ -58,8 +58,8 @@ CREATE TABLE Rental (
     actualReturnDate DATETIME2 NULL,
     rentalCost DECIMAL(10, 2) CHECK (rentalCost >= 0),
     status NVARCHAR(20) NOT NULL CHECK (status IN ('Активна', 'Завершена', 'Отменена')),
-    carLicensePlate NVARCHAR(15) NOT NULL FOREIGN KEY REFERENCES Car(licensePlate) ON DELETE CASCADE,
-    rentalOrderId INT NOT NULL FOREIGN KEY REFERENCES RentalOrder(id) ON DELETE CASCADE,
+    carLicensePlate NVARCHAR(15) NOT NULL FOREIGN KEY REFERENCES Car(licensePlate) ,
+    rentalOrderId INT NOT NULL FOREIGN KEY REFERENCES RentalOrder(id) ,
     CONSTRAINT CHK_Rental_Dates CHECK (plannedReturnDate > startDate AND (actualReturnDate IS NULL OR actualReturnDate >= startDate))
 );
 
@@ -71,14 +71,14 @@ CREATE TABLE Fine (
 );
 
 CREATE TABLE RentalFine (
-    rentalId INT NOT NULL FOREIGN KEY REFERENCES Rental(id) ON DELETE CASCADE,
-    fineId INT NOT NULL FOREIGN KEY REFERENCES Fine(id) ON DELETE CASCADE,
+    rentalId INT NOT NULL FOREIGN KEY REFERENCES Rental(id) ,
+    fineId INT NOT NULL FOREIGN KEY REFERENCES Fine(id) ,
     PRIMARY KEY (rentalId, fineId)
 );
 
 CREATE TABLE ClientDiscount (
-    clientPassport NVARCHAR(20) NOT NULL FOREIGN KEY REFERENCES Client(passport) ON DELETE CASCADE,
-    discountId INT NOT NULL FOREIGN KEY REFERENCES Discount(id) ON DELETE CASCADE,
+    clientPassport NVARCHAR(20) NOT NULL FOREIGN KEY REFERENCES Client(passport) ,
+    discountId INT NOT NULL FOREIGN KEY REFERENCES Discount(id) ,
     PRIMARY KEY (clientPassport, discountId)
 );
 
