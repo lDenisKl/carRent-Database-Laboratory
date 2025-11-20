@@ -41,17 +41,21 @@ RETURNS @RevenueTable TABLE
 )
 AS
 BEGIN
+    DECLARE @AllMonths TABLE (MonthNumber INT);
+    INSERT INTO @AllMonths VALUES
+    (1), (2), (3), (4), (5), (6), (7), (8), (9), (10), (11), (12);
     INSERT INTO @RevenueTable
     SELECT 
-        MONTH(r.startDate) AS MonthNumber,
-        SUM(ISNULL(r.rentalCost, 0)) AS Revenue,
-        COUNT(*) AS RentalCount,
-        AVG(ISNULL(r.rentalCost, 0)) AS AverageRentalPrice
-    FROM Rental r
-    WHERE YEAR(r.startDate) = @Year
-      AND r.status IN ('Завершена', 'Активна')
-    GROUP BY MONTH(r.startDate)
-    ORDER BY MonthNumber;
+        am.MonthNumber,
+        ISNULL(SUM(r.rentalCost), 0) AS Revenue,
+        COUNT(r.id) AS RentalCount,
+        ISNULL(AVG(r.rentalCost), 0) AS AverageRentalPrice
+    FROM @AllMonths am
+    LEFT JOIN Rental r ON am.MonthNumber = MONTH(r.startDate) 
+                      AND YEAR(r.startDate) = @Year
+                      AND r.status IN ('Завершена', 'Активна')
+    GROUP BY am.MonthNumber
+    ORDER BY am.MonthNumber;
     
     RETURN;
 END;

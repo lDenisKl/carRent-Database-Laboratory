@@ -42,16 +42,17 @@ EXEC GetCarRentalClients @carLicensePlate = 'А001АИ777';
 DROP PROCEDURE IF EXISTS GetModelPopularityRating;
 
 CREATE OR ALTER PROCEDURE GetModelPopularityRating
-    @modelName NVARCHAR(50)
+    @modelName NVARCHAR(50),
+    @rankPosition INT OUTPUT
 AS
-BEGIN
+BEGIN    
     WITH ModelRanks AS (
         SELECT 
             m.name,
-            COUNT(r.id) * ISNULL(SUM(DATEDIFF(DAY, r.startDate, 
-                ISNULL(r.actualReturnDate, r.plannedReturnDate))), 0) as score,
-            RANK() OVER (ORDER BY COUNT(r.id) * ISNULL(SUM(DATEDIFF(DAY, r.startDate, 
-                ISNULL(r.actualReturnDate, r.plannedReturnDate))), 0) DESC) as position
+            RANK() OVER (ORDER BY 
+                COUNT(r.id) * ISNULL(SUM(DATEDIFF(DAY, r.startDate, 
+                    ISNULL(r.actualReturnDate, r.plannedReturnDate))), 0) 
+                DESC) as position
         FROM Model m
         LEFT JOIN Car c ON m.id = c.modelId
         LEFT JOIN Rental r ON c.licensePlate = r.carLicensePlate 
@@ -59,16 +60,17 @@ BEGIN
         GROUP BY m.name
     )
     
-    SELECT 
-        name as model,
-        score as popularity_score,
-        position as rank_position,
-        (SELECT COUNT(*) FROM ModelRanks) as total_models
+    SELECT @rankPosition = position
     FROM ModelRanks 
     WHERE name = @modelName;
+    
+    IF @rankPosition IS NULL
+        SET @rankPosition = 0;
 END;
 
-EXEC GetModelPopularityRating @modelName = 'Camry'
+DECLARE @position INT;
+EXEC GetModelPopularityRating @modelName = 'RAV4', @rankPosition = @position OUTPUT;
+SELECT @position AS 'Место в рейтинге';
 
 --------
 
