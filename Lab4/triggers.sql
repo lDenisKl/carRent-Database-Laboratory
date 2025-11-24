@@ -1,39 +1,40 @@
 ﻿IF OBJECT_ID('Rental_Insert_Trigger', 'TR') IS NOT NULL DROP TRIGGER Rental_Insert_Trigger;
 
+IF OBJECT_ID('Rental_Insert_Trigger', 'TR') IS NOT NULL DROP TRIGGER Rental_Insert_Trigger;
+GO
 
 CREATE OR ALTER TRIGGER Rental_Insert_Trigger
 ON Rental
 INSTEAD OF INSERT
 AS
 BEGIN
-    -- Клиенты с нарушениями
-    DECLARE @ProblemClients TABLE (clientPassport NVARCHAR(20), reason NVARCHAR(100));
+    SET NOCOUNT ON;
     
-    INSERT INTO @ProblemClients
-    SELECT DISTINCT ro.clientPassport, 'Имеет штрафы'
-    FROM inserted i
-    JOIN RentalOrder ro ON i.rentalOrderId = ro.id
-    WHERE EXISTS (
-        SELECT 1 
-        FROM Rental r
-        JOIN RentalOrder ro2 ON r.rentalOrderId = ro2.id
-        JOIN RentalFine rf ON r.id = rf.rentalId
-        WHERE ro2.clientPassport = ro.clientPassport
-    )
-    UNION
-    SELECT DISTINCT ro.clientPassport, 'Имеет просрочки возврата'
-    FROM inserted i
-    JOIN RentalOrder ro ON i.rentalOrderId = ro.id
-    WHERE EXISTS (
-        SELECT 1 
-        FROM Rental r
-        JOIN RentalOrder ro2 ON r.rentalOrderId = ro2.id
-        WHERE ro2.clientPassport = ro.clientPassport
-        AND r.actualReturnDate > r.plannedReturnDate
-        AND r.actualReturnDate IS NOT NULL
+    -- Создаем временную таблицу для хранения данных клиентов
+    CREATE TABLE #ClientData (
+        clientPassport NVARCHAR(20) COLLATE DATABASE_DEFAULT,
+        rentalCount INT,
+        isProblemClient BIT
     );
+
+    -- Заполняем временную таблицу с явным указанием кодировки
+    INSERT INTO #ClientData
+    SELECT 
+        ro.clientPassport,
+        COUNT(CASE WHEN r.status = 'Завершена' THEN 1 END) as rentalCount,
+        CASE WHEN EXISTS (
+            SELECT 1 FROM Rental r2 
+            JOIN RentalOrder ro2 ON r2.rentalOrderId = ro2.id 
+            WHERE ro2.clientPassport = ro.clientPassport
+            AND (EXISTS (SELECT 1 FROM RentalFine rf WHERE rf.rentalId = r2.id)
+                 OR r2.actualReturnDate > r2.plannedReturnDate)
+        ) THEN 1 ELSE 0 END as isProblemClient
+    FROM inserted i
+    JOIN RentalOrder ro ON i.rentalOrderId = ro.id
+    LEFT JOIN Rental r ON r.rentalOrderId = ro.id
+    GROUP BY ro.clientPassport;
     
-    -- Вставка с учетом скидок
+    -- Вставляем хороших клиентов
     INSERT INTO Rental (startDate, plannedReturnDate, actualReturnDate, rentalCost, status, carLicensePlate, rentalOrderId)
     SELECT 
         i.startDate,
@@ -41,44 +42,30 @@ BEGIN
         NULL,
         i.rentalCost * (1 - 
             CASE 
-                WHEN rentalCount >= 10 THEN 15.0
-                WHEN rentalCount >= 5 THEN 10.0
-                WHEN rentalCount >= 3 THEN 5.0
+                WHEN cd.rentalCount >= 10 THEN 0.15
+                WHEN cd.rentalCount >= 5 THEN 0.10
+                WHEN cd.rentalCount >= 3 THEN 0.05
                 ELSE 0
-            END / 100),
+            END),
         i.status,
         i.carLicensePlate,
         i.rentalOrderId
     FROM inserted i
     JOIN RentalOrder ro ON i.rentalOrderId = ro.id
-    LEFT JOIN @ProblemClients pc ON ro.clientPassport = pc.clientPassport
-    LEFT JOIN (
-        SELECT ro3.clientPassport, COUNT(*) as rentalCount
-        FROM Rental r
-        JOIN RentalOrder ro3 ON r.rentalOrderId = ro3.id
-        WHERE r.status = 'Завершена'
-        GROUP BY ro3.clientPassport
-    ) rc ON ro.clientPassport = rc.clientPassport
-    WHERE pc.clientPassport IS NULL;
+    JOIN #ClientData cd ON ro.clientPassport = cd.clientPassport COLLATE DATABASE_DEFAULT
+    WHERE cd.isProblemClient = 0;
+
+    -- Выводим сообщения
+    DECLARE @problemMsg NVARCHAR(MAX) = (
+        SELECT STRING_AGG(clientPassport, ', ') 
+        FROM #ClientData 
+        WHERE isProblemClient = 1
+    );
+    IF @problemMsg IS NOT NULL 
+        PRINT 'Клиенты с нарушениями: ' + @problemMsg;
+    PRINT 'Добавлено записей: ' + CAST(@@ROWCOUNT AS NVARCHAR);
     
-    DECLARE @insertedRows INT = @@ROWCOUNT;
-    
-    -- результат
-    IF EXISTS(SELECT 1 FROM @ProblemClients)
-    BEGIN
-        DECLARE @errorMsg NVARCHAR(MAX) = 'Следующие клиенты имеют нарушения и не были добавлены: ';
-        
-        DECLARE @reasons TABLE (clientPassport NVARCHAR(20), reason NVARCHAR(100));
-        INSERT INTO @reasons SELECT DISTINCT clientPassport, reason FROM @ProblemClients;
-        
-        SELECT @errorMsg = @errorMsg + clientPassport + ' (' + reason + '), '
-        FROM @reasons;
-        
-        SET @errorMsg = LEFT(@errorMsg, LEN(@errorMsg) - 1);
-        PRINT @errorMsg;
-    END
-    
-    PRINT 'Успешно вставлено ' + CAST(@insertedRows AS NVARCHAR) + ' записей';
+    DROP TABLE #ClientData;
 END;
 GO
 
