@@ -1,40 +1,36 @@
 ﻿IF OBJECT_ID('Rental_Insert_Trigger', 'TR') IS NOT NULL DROP TRIGGER Rental_Insert_Trigger;
 
-IF OBJECT_ID('Rental_Insert_Trigger', 'TR') IS NOT NULL DROP TRIGGER Rental_Insert_Trigger;
-GO
 
 CREATE OR ALTER TRIGGER Rental_Insert_Trigger
 ON Rental
 INSTEAD OF INSERT
 AS
 BEGIN
-    SET NOCOUNT ON;
-    
-    -- Создаем временную таблицу для хранения данных клиентов
     CREATE TABLE #ClientData (
         clientPassport NVARCHAR(20) COLLATE DATABASE_DEFAULT,
         rentalCount INT,
         isProblemClient BIT
     );
-
-    -- Заполняем временную таблицу с явным указанием кодировки
     INSERT INTO #ClientData
     SELECT 
         ro.clientPassport,
-        COUNT(CASE WHEN r.status = 'Завершена' THEN 1 END) as rentalCount,
+        ISNULL((
+            SELECT COUNT(*) 
+            FROM Rental r 
+            JOIN RentalOrder ro2 ON r.rentalOrderId = ro2.id 
+            WHERE ro2.clientPassport = ro.clientPassport 
+            AND r.status = 'Завершена'
+        ), 0) as rentalCount,
         CASE WHEN EXISTS (
-            SELECT 1 FROM Rental r2 
+            SELECT 1 
+            FROM Rental r2 
             JOIN RentalOrder ro2 ON r2.rentalOrderId = ro2.id 
             WHERE ro2.clientPassport = ro.clientPassport
             AND (EXISTS (SELECT 1 FROM RentalFine rf WHERE rf.rentalId = r2.id)
-                 OR r2.actualReturnDate > r2.plannedReturnDate)
+                    OR (r2.actualReturnDate IS NOT NULL AND r2.actualReturnDate > r2.plannedReturnDate))
         ) THEN 1 ELSE 0 END as isProblemClient
     FROM inserted i
-    JOIN RentalOrder ro ON i.rentalOrderId = ro.id
-    LEFT JOIN Rental r ON r.rentalOrderId = ro.id
-    GROUP BY ro.clientPassport;
-    
-    -- Вставляем хороших клиентов
+    JOIN RentalOrder ro ON i.rentalOrderId = ro.id;
     INSERT INTO Rental (startDate, plannedReturnDate, actualReturnDate, rentalCost, status, carLicensePlate, rentalOrderId)
     SELECT 
         i.startDate,
@@ -52,10 +48,9 @@ BEGIN
         i.rentalOrderId
     FROM inserted i
     JOIN RentalOrder ro ON i.rentalOrderId = ro.id
-    JOIN #ClientData cd ON ro.clientPassport = cd.clientPassport COLLATE DATABASE_DEFAULT
+    JOIN #ClientData cd ON ro.clientPassport = cd.clientPassport
     WHERE cd.isProblemClient = 0;
 
-    -- Выводим сообщения
     DECLARE @problemMsg NVARCHAR(MAX) = (
         SELECT STRING_AGG(clientPassport, ', ') 
         FROM #ClientData 
@@ -108,8 +103,6 @@ BEGIN TRY
     
     PRINT 'Клиент 2 (4520 222222 со скидкой 5%): исходная 20000, итоговая ' + CAST(@cost2 AS NVARCHAR);
     PRINT 'Клиент 3 (4510 999999 без скидки): исходная 18000, итоговая ' + CAST(@cost3 AS NVARCHAR);
-    
-    -- Проверяем, что клиент с нарушениями действительно не был вставлен
     IF NOT EXISTS (SELECT 1 FROM Rental WHERE rentalOrderId = @testOrderId1)
         PRINT 'УСПЕХ: Клиент с нарушениями (4510 123456) корректно заблокирован';
     ELSE
@@ -128,3 +121,5 @@ BEGIN CATCH
     IF @testOrderId3 IS NOT NULL AND EXISTS (SELECT 1 FROM RentalOrder WHERE id = @testOrderId3) 
         DELETE FROM RentalOrder WHERE id = @testOrderId3;
 END CATCH
+
+
