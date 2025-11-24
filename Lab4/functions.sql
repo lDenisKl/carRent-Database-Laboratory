@@ -67,4 +67,4 @@ SELECT dbo.GetAverageRentalsPerDay() AS 'Среднее количество сделок в день';
 
 SELECT * FROM dbo.GetCurrentlyRentedCars();
 
-SELECT * FROM dbo.GetRevenueByMonth(2025);
+SELECT * FROM dbo.GetRevenueByMonth(2024);

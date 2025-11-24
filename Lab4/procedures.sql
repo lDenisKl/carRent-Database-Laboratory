@@ -69,7 +69,7 @@ BEGIN
 END;
 
 DECLARE @position INT;
-EXEC GetModelPopularityRating @modelName = 'RAV4', @rankPosition = @position OUTPUT;
+EXEC GetModelPopularityRating @modelName = 'Camry', @rankPosition = @position OUTPUT;
 SELECT @position AS 'Место в рейтинге';
 
 --------
