@@ -1,4 +1,4 @@
-IF OBJECT_ID('Rental_Insert_Trigger', 'TR') IS NOT NULL DROP TRIGGER Model_Update_Trigger;
+IF OBJECT_ID('Model_Update_Trigger', 'TR') IS NOT NULL DROP TRIGGER Model_Update_Trigger;
 
 CREATE OR ALTER TRIGGER Model_Update_Trigger
 ON Model
