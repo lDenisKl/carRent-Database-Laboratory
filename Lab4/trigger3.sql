@@ -53,26 +53,24 @@ BEGIN
     CLOSE car_cursor;
     DEALLOCATE car_cursor;
     
-    -- Если были ошибки, вызываем RAISERROR один раз в конце
     IF @errorCount > 0
     BEGIN
         RAISERROR(@errorMessages, 17, 1);
-        RETURN; -- Важно: прерываем выполнение
+        RETURN;
     END
 END;
 GO
 
-PRINT 'Тест 3.1: Удаление автомобиля, не удовлетворяющего условиям';
+PRINT 'Тест 3 Удаление автомобиля, не удовлетворяющего условиям';
 BEGIN TRY
-    DELETE FROM Car WHERE licensePlate = 'А001АА777'; -- Молодой, был в прокате, хорошее состояние
-    --DELETE FROM Car WHERE licensePlate = 'А007АА777';
+    DELETE FROM Car WHERE licensePlate = 'С204СС777'; -- Молодой, был в прокате, хорошее состояние
     PRINT 'ОШИБКА: Триггер не сработал!';
 END TRY
 BEGIN CATCH
     PRINT 'УСПЕХ: ' + ERROR_MESSAGE();
 END CATCH
 
-
+    DELETE FROM Rental WHERE carLicensePlate = 'С204СС777';
     DELETE FROM Rental WHERE carLicensePlate = 'Е305ЕЕ777';
     DELETE FROM Rental WHERE carLicensePlate = 'А001АА777';
 PRINT 'Тест 3.2: Удаление автомобиля, удовлетворяющего условиям';
