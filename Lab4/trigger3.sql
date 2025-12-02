@@ -11,7 +11,6 @@ BEGIN
     
     DECLARE @errorMessages NVARCHAR(MAX) = '';
     
-    -- Собираем ВСЕ ошибки в одну строку
     WITH ErrorMessages AS (
         SELECT 
             'Автомобиль ' + d.licensePlate + ' не может быть удален. ' +
@@ -40,13 +39,25 @@ BEGIN
     IF @errorMessages != ''
     BEGIN
         DECLARE @msg NVARCHAR(MAX) = 'Обнаружены ошибки удаления:' + CHAR(13) + CHAR(10) + @errorMessages;
-        THROW 50000, @msg, 1;
+        --PRINT @msg
+            RAISERROR('%s', 16, 1, @msg);
+        --THROW 50000, @msg, 1;
     END
 END;
 GO
+
+SELECT d.licensePlate 
+        FROM Car d
+        WHERE (YEAR(GETDATE()) - d.year > 15)
+           AND NOT EXISTS (SELECT 1 FROM Rental r WHERE r.carLicensePlate = d.licensePlate)
+           AND d.condition = 'Плохое'
+
+
+SELECT * FROM Car WHERE licensePlate = 'Х410ХХ777';
+
 PRINT 'Тест 3 Удаление автомобиля, не удовлетворяющего условиям';
 BEGIN TRY
-    DELETE FROM Car WHERE licensePlate = 'С204СС777'; -- Молодой, был в прокате, плохое состояние
+    DELETE FROM Car WHERE licensePlate = 'С204СС777' OR licensePlate = 'Х410ХХ777'; -- Молодой, был в прокате, плохое состояние
     PRINT 'ОШИБКА: Триггер не сработал!';
 END TRY
 BEGIN CATCH
