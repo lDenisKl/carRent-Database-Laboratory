@@ -1,64 +1,79 @@
-USE [Cars1];
+п»їUSE [Cars1];
 GO
--- СОЗДАНИЕ РОЛЕЙ
--- для руководителя
+
+-- РЎРћР—Р”РђРќРР• Р РћР›Р•Р™
+-- РґР»СЏ СЂСѓРєРѕРІРѕРґРёС‚РµР»СЏ
 CREATE ROLE ManagerRole;
 GO
 
--- для сотрудника
+-- РґР»СЏ СЃРѕС‚СЂСѓРґРЅРёРєР°
 CREATE ROLE EmployeeRole;
 GO
 
 -----------------
+-- РџР РђР’Рђ Р РЈРљРћР’РћР”РРўР•Р›РЇ 
+GRANT SELECT ON dbo.Model TO ManagerRole WITH GRANT OPTION;
+GRANT SELECT ON Car TO ManagerRole WITH GRANT OPTION;
+GRANT SELECT ON Client TO ManagerRole WITH GRANT OPTION;
+GRANT SELECT ON Discount TO ManagerRole WITH GRANT OPTION;
+GRANT SELECT ON ClientDiscount TO ManagerRole WITH GRANT OPTION;
 
--- ПРАВА РУКОВОДИТЕЛЯ
-GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Model TO ManagerRole WITH GRANT OPTION;
-GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Car TO ManagerRole WITH GRANT OPTION;
-GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Client TO ManagerRole WITH GRANT OPTION;
-GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Discount TO ManagerRole WITH GRANT OPTION;
-GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.RentalOrder TO ManagerRole WITH GRANT OPTION;
-GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Rental TO ManagerRole WITH GRANT OPTION;
-GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Fine TO ManagerRole WITH GRANT OPTION;
-GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.RentalFine TO ManagerRole WITH GRANT OPTION;
-GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.ClientDiscount TO ManagerRole WITH GRANT OPTION;
+GRANT SELECT, INSERT, UPDATE ON RentalOrder TO ManagerRole WITH GRANT OPTION;
+DENY DELETE ON RentalOrder TO ManagerRole;
 
- GRANT EXECUTE ON dbo.GetAvailableSUVs TO ManagerRole WITH GRANT OPTION;
- GRANT EXECUTE ON dbo.GetCarRentalClients TO ManagerRole WITH GRANT OPTION;
- GRANT EXECUTE ON dbo.GetModelPopularityRating TO ManagerRole WITH GRANT OPTION;
+GRANT SELECT, INSERT, UPDATE ON Rental TO ManagerRole  WITH GRANT OPTION;
+DENY DELETE ON Rental TO ManagerRole;
 
-GRANT CREATE TABLE, CREATE PROCEDURE, CREATE VIEW TO ManagerRole;
+GRANT SELECT ON Fine TO ManagerRole  WITH GRANT OPTION;
+DENY INSERT, UPDATE, DELETE ON Fine TO ManagerRole;
 
-GRANT ALTER ON SCHEMA::dbo TO ManagerRole;
+GRANT SELECT ON RentalFine TO ManagerRole  WITH GRANT OPTION;
+DENY INSERT, UPDATE, DELETE ON RentalFine TO ManagerRole;
 
--- ПРАВА СОТРУДНИКА
-GRANT SELECT ON dbo.Model TO EmployeeRole;
-GRANT SELECT ON dbo.Car TO EmployeeRole;
-GRANT SELECT ON dbo.Discount TO EmployeeRole;
+GRANT EXECUTE ON GetAvailableSUVs TO ManagerRole  WITH GRANT OPTION;
+GRANT EXECUTE ON GetCarRentalClients TO ManagerRole  WITH GRANT OPTION;
+GRANT EXECUTE ON GetModelPopularityRating TO ManagerRole  WITH GRANT OPTION;
 
--- Может работать с клиентами
-GRANT SELECT, INSERT, UPDATE ON dbo.Client TO EmployeeRole;
-DENY DELETE ON dbo.Client TO EmployeeRole;
+GRANT EXECUTE ON GetAverageRentalsPerDay TO ManagerRole;
+GRANT SELECT ON GetCurrentlyRentedCars TO ManagerRole;
+GRANT SELECT ON GetRevenueByMonth TO ManagerRole;
 
--- Может работать с заказами
-GRANT SELECT, INSERT, UPDATE ON dbo.RentalOrder TO EmployeeRole;
-DENY DELETE ON dbo.RentalOrder TO EmployeeRole;
+-----------------
+-- РџР РђР’Рђ РЎРћРўР РЈР”РќРРљРђ
+GRANT SELECT ON Model TO EmployeeRole;
+GRANT SELECT ON Car TO EmployeeRole;
+GRANT SELECT ON Discount TO EmployeeRole;
 
--- Может работать с арендами
-GRANT SELECT, INSERT, UPDATE ON dbo.Rental TO EmployeeRole;
-DENY DELETE ON dbo.Rental TO EmployeeRole;
+-- РњРѕР¶РµС‚ СЂР°Р±РѕС‚Р°С‚СЊ СЃ РєР»РёРµРЅС‚Р°РјРё
+GRANT SELECT, INSERT, UPDATE ON Client TO EmployeeRole;
+DENY DELETE ON Client TO EmployeeRole;
 
--- нет доступа к финансам
-DENY SELECT, INSERT, UPDATE, DELETE ON dbo.Fine TO EmployeeRole;
-DENY SELECT, INSERT, UPDATE, DELETE ON dbo.RentalFine TO EmployeeRole;
+-- РњРѕР¶РµС‚ СЂР°Р±РѕС‚Р°С‚СЊ СЃ Р·Р°РєР°Р·Р°РјРё
+GRANT SELECT, INSERT, UPDATE ON RentalOrder TO EmployeeRole;
+DENY DELETE ON RentalOrder TO EmployeeRole;
 
--- Может только просматривать связи клиент-скидка
-GRANT SELECT ON dbo.ClientDiscount TO EmployeeRole;
-DENY INSERT, UPDATE, DELETE ON dbo.ClientDiscount TO EmployeeRole;
+-- РњРѕР¶РµС‚ СЂР°Р±РѕС‚Р°С‚СЊ СЃ Р°СЂРµРЅРґР°РјРё
+GRANT SELECT, INSERT, UPDATE ON Rental TO EmployeeRole;
+DENY DELETE ON Rental TO EmployeeRole;
 
- GRANT EXECUTE ON dbo.GetAvailableSUVs TO EmployeeRole;
- GRANT EXECUTE ON dbo.GetModelPopularityRating TO EmployeeRole;
+-- РќРµС‚ РґРѕСЃС‚СѓРїР° Рє С„РёРЅР°РЅСЃР°Рј
+DENY SELECT, INSERT, UPDATE, DELETE ON Fine TO EmployeeRole;
+DENY SELECT, INSERT, UPDATE, DELETE ON RentalFine TO EmployeeRole;
 
- -- СОЗДАНИЕ ПОЛЬЗОВАТЕЛЕЙ
+-- РњРѕР¶РµС‚ С‚РѕР»СЊРєРѕ РїСЂРѕСЃРјР°С‚СЂРёРІР°С‚СЊ СЃРІСЏР·Рё РєР»РёРµРЅС‚-СЃРєРёРґРєР°
+GRANT SELECT ON ClientDiscount TO EmployeeRole;
+DENY INSERT, UPDATE, DELETE ON ClientDiscount TO EmployeeRole;
+
+GRANT EXECUTE ON GetAvailableSUVs TO EmployeeRole;
+GRANT EXECUTE ON GetModelPopularityRating TO EmployeeRole;
+
+GRANT EXECUTE ON GetAverageRentalsPerDay TO EmployeeRole;
+GRANT SELECT ON GetCurrentlyRentedCars TO EmployeeRole;
+DENY SELECT ON GetRevenueByMonth TO EmployeeRole;
+
+
+
+ -- РЎРћР—Р”РђРќРР• РџРћР›Р¬Р—РћР’РђРўР•Р›Р•Р™
 
 USE [master];
 GO
@@ -82,7 +97,7 @@ END
 USE [Cars1];
 GO
 
--- пользователи в базе данных
+-- РїРѕР»СЊР·РѕРІР°С‚РµР»Рё РІ Р±Р°Р·Рµ РґР°РЅРЅС‹С…
 IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'User_d.kolodochka')
 BEGIN
     CREATE USER [User_d.kolodochka] FOR LOGIN [User_d.kolodochka];
@@ -93,7 +108,7 @@ BEGIN
     CREATE USER [User1_d.kolodochka] FOR LOGIN [User1_d.kolodochka];
 END
 
--- Добавляем пользователей в роли
+-- Р”РѕР±Р°РІР»СЏРµРј РїРѕР»СЊР·РѕРІР°С‚РµР»РµР№ РІ СЂРѕР»Рё
 ALTER ROLE ManagerRole ADD MEMBER [User_d.kolodochka];
 ALTER ROLE EmployeeRole ADD MEMBER [User1_d.kolodochka];
 GO
@@ -101,8 +116,37 @@ GO
 
 
 ---------
-REVOKE DELETE ON dbo.Rental FROM EmployeeRole;
-REVOKE EXECUTE ON dbo.sp_CreateNewRentalOrder FROM EmployeeRole;
-DENY SELECT ON dbo.Fine TO EmployeeRole;
-DENY SELECT ON dbo.RentalFine TO EmployeeRole;
+REVOKE DELETE ON Rental FROM EmployeeRole;
+REVOKE EXECUTE ON sp_CreateNewRentalOrder FROM EmployeeRole;
+DENY SELECT ON Fine TO EmployeeRole;
+DENY SELECT ON RentalFine TO EmployeeRole;
+REVOKE SELECT ON dbo.Fine FROM EmployeeRole;
 ---------
+
+
+USE [Cars1];
+GO
+
+-- РџС‹С‚Р°РµРјСЃСЏ РІС‹РїРѕР»РЅРёС‚СЊ РѕС‚ User1
+SELECT * FROM Fine;
+
+-- РџРµСЂРµРґР°С‘Рј РїСЂР°РІР° Рё РїСЂРѕР±СѓРµРј РµС‰Рµ СЂР°Р·
+GRANT SELECT ON dbo.Fine TO [User1_d.kolodochka] as ManagerRole;
+
+-- РЈР”РђР›Р•РќРР• Р РћР›Р•Р™ Р РџРћР›Р¬Р—РћР’РђРўР•Р›Р•Р™
+USE [Cars1];
+GO
+ALTER ROLE ManagerRole DROP MEMBER [User_d.kolodochka];
+ALTER ROLE EmployeeRole DROP MEMBER [User1_d.kolodochka];
+GO
+DROP ROLE IF EXISTS ManagerRole;
+DROP ROLE IF EXISTS EmployeeRole;
+GO
+DROP USER IF EXISTS [User_d.kolodochka];
+DROP USER IF EXISTS [User1_d.kolodochka];
+GO
+USE [master];
+GO
+DROP LOGIN IF EXISTS [User_d.kolodochka];
+DROP LOGIN IF EXISTS [User1_d.kolodochka];
+GO
