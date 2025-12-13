@@ -91,6 +91,7 @@ WHERE m.id NOT IN (
 ORDER BY m.manufacturer, m.name;
 
 -- Найти постоянных клиентов (более 3-х раз) с расчётом скидки
+
 WITH ClientRentals AS (
     SELECT 
         c.passport,
@@ -102,40 +103,41 @@ WITH ClientRentals AS (
         CarNode ca
     WHERE MATCH(c-(r)->ca)
         AND r.status IN ('Завершена', 'Активна')
-    GROUP BY c.passport, c.fullName, c.$node_id
+    GROUP BY c.passport, c.fullName
 ),
 ClientFines AS (
-    -- Клиенты и количество их штрафов (аналогично SIGN(COUNT(rf.rentalId)))
     SELECT 
         c.passport,
-        CASE 
-            WHEN COUNT(f.$node_id) > 0 THEN 1 
-            ELSE 0 
-        END AS has_fines
-    FROM ClientNode c
-    -- Связь: клиент → авто → заказ → штраф
-    LEFT JOIN RENTED r ON c.$node_id = r.$from_id
-    LEFT JOIN ORDER_CONTAINS_CAR occ ON r.$to_id = occ.$to_id
-    LEFT JOIN ORDER_HAS_FINE ohf ON occ.$from_id = ohf.$from_id
-    LEFT JOIN FineNode f ON ohf.$to_id = f.$node_id
-    WHERE r.status IN ('Завершена', 'Активна')
+        1 AS has_fines
+    FROM 
+        ClientNode c,
+        RENTED r,
+        CarNode ca,
+        ORDER_CONTAINS_CAR occ,
+        OrderNode o,
+        ORDER_HAS_FINE ohf,
+        FineNode f
+    WHERE MATCH(c-(r)->ca AND o-(occ)->ca AND o-(ohf)->f)
+        AND r.status IN ('Завершена', 'Активна')
     GROUP BY c.passport
 )
 SELECT 
     cr.passport,
     cr.fullName,
     cr.rental_count,
-    ISNULL(cf.has_fines, 0) AS has_fines,
+    CASE WHEN cf.passport IS NOT NULL THEN 1 ELSE 0 END AS has_fines,
     CASE
-        WHEN ISNULL(cf.has_fines, 0) = 1 THEN 0
+        WHEN cf.passport IS NOT NULL THEN 0
         WHEN cr.rental_count = 4 THEN 2
         WHEN cr.rental_count = 6 THEN 4
         WHEN cr.rental_count >= 8 THEN 6
         ELSE 0
     END AS discount_percent
 FROM ClientRentals cr
-LEFT JOIN ClientFines cf ON cr.passport = cf.passports
+LEFT JOIN ClientFines cf ON cr.passport = cf.passport
+-- WHERE cr.rental_count > 3 
 ORDER BY cr.rental_count DESC;
+
 
 WITH ClientStats AS (
     SELECT 
@@ -180,7 +182,7 @@ FROM
 WHERE MATCH(c-(r)->ca)
     AND r.status IN ('Завершена', 'Активна')
     AND r.rentalCost > 0
-GROUP BY c.passport, c.fullName, c.phone, c.$node_id
+GROUP BY c.passport, c.fullName, c.phone
 ORDER BY total_spent DESC, rentals_count DESC;
 
 

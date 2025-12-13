@@ -58,44 +58,37 @@ CREATE TABLE RENTED (
 
 CREATE TABLE HAS_MODEL AS EDGE;
 CREATE TABLE HAS_DISCOUNT AS EDGE;
-CREATE TABLE ORDER_CONTAINS_CAR AS EDGE; -- Заказ содержит автомобиль
-CREATE TABLE ORDER_HAS_FINE AS EDGE;     -- Заказ имеет штраф
-CREATE TABLE ORDER_USES_DISCOUNT AS EDGE; -- Заказ использует скидку
-CREATE TABLE CAR_IS_OF_TYPE AS EDGE; -- Автомобиль относится к типу (опционально)
+CREATE TABLE ORDER_CONTAINS_CAR AS EDGE;
+CREATE TABLE ORDER_HAS_FINE AS EDGE;
+CREATE TABLE ORDER_USES_DISCOUNT AS EDGE;
 
 -- 2. ЗАПОЛНЕНИЕ УЗЛОВ ДАННЫМИ
 
--- Заполняем узлы клиентов
 INSERT INTO ClientNode (passport, fullName, address, phone)
 SELECT passport, fullName, address, phone FROM Client;
 
 PRINT 'Заполнено клиентов: ' + CAST(@@ROWCOUNT AS NVARCHAR);
 
--- Заполняем узлы автомобилей
 INSERT INTO CarNode (licensePlate, year, color, condition)
 SELECT licensePlate, year, color, condition FROM Car;
 
 PRINT 'Заполнено автомобилей: ' + CAST(@@ROWCOUNT AS NVARCHAR);
 
--- Заполняем узлы моделей
 INSERT INTO ModelNode (id, name, type, manufacturer, dailyPrice)
 SELECT id, name, type, manufacturer, dailyPrice FROM Model;
 
 PRINT 'Заполнено моделей: ' + CAST(@@ROWCOUNT AS NVARCHAR);
 
--- Заполняем узлы скидок
 INSERT INTO DiscountNode (id, name, description, rate, type, isActive)
 SELECT id, name, description, rate, type, isActive FROM Discount;
 
 PRINT 'Заполнено скидок: ' + CAST(@@ROWCOUNT AS NVARCHAR);
 
--- Заполняем узлы заказов
 INSERT INTO OrderNode (id, createDate, status, totalPrice)
 SELECT id, createDate, status, totalPrice FROM RentalOrder;
 
 PRINT 'Заполнено заказов: ' + CAST(@@ROWCOUNT AS NVARCHAR);
 
--- Заполняем узлы штрафов
 INSERT INTO FineNode (id, type, description, amount)
 SELECT id, type, description, amount FROM Fine;
 
@@ -164,8 +157,8 @@ PRINT 'Создано связей заказ-автомобиль: ' + CAST(@@R
 -- 3.5 Рёбра ORDER_HAS_FINE: Заказ → Штраф (через RentalFine)
 INSERT INTO ORDER_HAS_FINE ($from_id, $to_id)
 SELECT DISTINCT
-    onode.$node_id,  -- из узла заказа
-    fn.$node_id      -- в узел штрафа
+    onode.$node_id, 
+    fn.$node_id      
 FROM RentalFine rf
 JOIN Rental r ON rf.rentalId = r.id
 JOIN RentalOrder ro ON r.rentalOrderId = ro.id
@@ -175,13 +168,11 @@ JOIN FineNode fn ON f.id = fn.id;
 
 PRINT 'Создано связей заказ-штраф: ' + CAST(@@ROWCOUNT AS NVARCHAR);
 
--- 3.6 Рёбра ORDER_USES_DISCOUNT: Заказ → Скидка (если применялась)
--- Нужно определить, какие скидки применялись в заказах
--- Предположим, что если клиент имеет скидку, она применяется к его заказам
+-- 3.6 Рёбра ORDER_USES_DISCOUNT: Заказ → Скидкаы
 INSERT INTO ORDER_USES_DISCOUNT ($from_id, $to_id)
 SELECT 
-    onode.$node_id,  -- из узла заказа
-    dn.$node_id      -- в узел скидки
+    onode.$node_id,
+    dn.$node_id
 FROM RentalOrder ro
 JOIN OrderNode onode ON ro.id = onode.id
 JOIN ClientDiscount cd ON ro.clientPassport = cd.clientPassport
