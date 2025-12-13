@@ -1,9 +1,5 @@
-USE [Cars1];
-GO
 
--- ============================================
--- 1. СОЗДАНИЕ ГРАФОВЫХ ТАБЛИЦ (если ещё не созданы)
--- ============================================
+-- 1. СОЗДАНИЕ ГРАФОВЫХ ТАБЛИЦ
 
 -- Узлы
 CREATE TABLE ClientNode (
@@ -62,14 +58,12 @@ CREATE TABLE RENTED (
 
 CREATE TABLE HAS_MODEL AS EDGE;
 CREATE TABLE HAS_DISCOUNT AS EDGE;
-CREATE ORDER_CONTAINS_CAR AS EDGE; -- Заказ содержит автомобиль
-CREATE ORDER_HAS_FINE AS EDGE;     -- Заказ имеет штраф
-CREATE ORDER_USES_DISCOUNT AS EDGE; -- Заказ использует скидку
+CREATE TABLE ORDER_CONTAINS_CAR AS EDGE; -- Заказ содержит автомобиль
+CREATE TABLE ORDER_HAS_FINE AS EDGE;     -- Заказ имеет штраф
+CREATE TABLE ORDER_USES_DISCOUNT AS EDGE; -- Заказ использует скидку
 CREATE TABLE CAR_IS_OF_TYPE AS EDGE; -- Автомобиль относится к типу (опционально)
 
--- ============================================
 -- 2. ЗАПОЛНЕНИЕ УЗЛОВ ДАННЫМИ
--- ============================================
 
 -- Заполняем узлы клиентов
 INSERT INTO ClientNode (passport, fullName, address, phone)
@@ -107,9 +101,8 @@ SELECT id, type, description, amount FROM Fine;
 
 PRINT 'Заполнено штрафов: ' + CAST(@@ROWCOUNT AS NVARCHAR);
 
--- ============================================
+
 -- 3. ЗАПОЛНЕНИЕ РЁБЕР ДАННЫМИ
--- ============================================
 
 -- 3.1 Рёбра HAS_MODEL: Автомобиль → Модель
 INSERT INTO HAS_MODEL ($from_id, $to_id)
@@ -194,65 +187,3 @@ JOIN OrderNode onode ON ro.id = onode.id
 JOIN ClientDiscount cd ON ro.clientPassport = cd.clientPassport
 JOIN DiscountNode dn ON cd.discountId = dn.id;
 
-PRINT 'Создано связей заказ-скидка: ' + CAST(@@ROWCOUNT AS NVARCHAR);
-
--- ============================================
--- 4. ПРОВЕРКА ЗАПОЛНЕНИЯ
--- ============================================
-
-PRINT '=== ПРОВЕРКА ЗАПОЛНЕНИЯ ===';
-
--- 4.1 Статистика по узлам
-SELECT 
-    'Узлы клиентов' as Тип, COUNT(*) as Количество FROM ClientNode
-UNION ALL
-SELECT 'Узлы автомобилей', COUNT(*) FROM CarNode
-UNION ALL
-SELECT 'Узлы моделей', COUNT(*) FROM ModelNode
-UNION ALL
-SELECT 'Узлы заказов', COUNT(*) FROM OrderNode
-UNION ALL
-SELECT 'Узлы скидок', COUNT(*) FROM DiscountNode
-UNION ALL
-SELECT 'Узлы штрафов', COUNT(*) FROM FineNode;
-
--- 4.2 Статистика по рёбрам
-SELECT 
-    'Рёбра RENTED' as Тип, COUNT(*) as Количество FROM RENTED
-UNION ALL
-SELECT 'Рёбра HAS_MODEL', COUNT(*) FROM HAS_MODEL
-UNION ALL
-SELECT 'Рёбра HAS_DISCOUNT', COUNT(*) FROM HAS_DISCOUNT
-UNION ALL
-SELECT 'Рёбра ORDER_CONTAINS_CAR', COUNT(*) FROM ORDER_CONTAINS_CAR
-UNION ALL
-SELECT 'Рёбра ORDER_HAS_FINE', COUNT(*) FROM ORDER_HAS_FINE
-UNION ALL
-SELECT 'Рёбра ORDER_USES_DISCOUNT', COUNT(*) FROM ORDER_USES_DISCOUNT;
-
--- 4.3 Проверка первых нескольких связей
-PRINT '=== ПЕРВЫЕ 5 СВЯЗЕЙ КЛИЕНТ-АВТОМОБИЛЬ ===';
-SELECT TOP 5
-    c.fullName as Клиент,
-    ca.licensePlate as Автомобиль,
-    r.startDate as Дата_начала,
-    r.rentalCost as Стоимость
-FROM 
-    ClientNode c,
-    RENTED r,
-    CarNode ca
-WHERE MATCH(c-(r)->ca)
-ORDER BY r.startDate;
-
-PRINT '=== ПЕРВЫЕ 5 СВЯЗЕЙ АВТОМОБИЛЬ-МОДЕЛЬ ===';
-SELECT TOP 5
-    ca.licensePlate as Автомобиль,
-    m.manufacturer as Производитель,
-    m.name as Модель,
-    m.dailyPrice as Цена_в_день
-FROM 
-    CarNode ca,
-    HAS_MODEL hm,
-    ModelNode m
-WHERE MATCH(ca-(hm)->m)
-ORDER BY ca.licensePlate;
