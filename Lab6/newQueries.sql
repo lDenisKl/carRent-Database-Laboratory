@@ -1,17 +1,17 @@
-ï»¿-- Ð Ð°ÑÑÑ‡Ð¸Ñ‚Ð°Ñ‚ÑŒ Ð²Ñ‹Ñ€ÑƒÑ‡ÐºÑƒ Ð¿ÑƒÐ½ÐºÑ‚Ð° Ð¿Ñ€Ð¾ÐºÐ°Ñ‚Ð° Ð¿Ð¾ Ð´Ð°Ñ‚Ð°Ð¼ Ñ Ð½Ð°Ñ‡Ð°Ð»Ð° Ñ‚ÐµÐºÑƒÑ‰ÐµÐ³Ð¾ Ð¼ÐµÑÑÑ†Ð°
+-- 1. Ðàññ÷èòàòü âûðó÷êó ïóíêòà ïðîêàòà ïî äàòàì ñ íà÷àëà òåêóùåãî ìåñÿöà
 SELECT 
-    CAST(r.actualReturnDate AS DATE) AS return_date,
-    SUM(r.rentalCost) AS daily_revenue
+    CAST(h.actualReturnDate AS DATE) AS return_date,
+    SUM(h.rentalCost) AS daily_revenue
 FROM 
-    ClientNode c,
-    RENTED r,
+    OrderNode o,
+    HAS h,
     CarNode ca
-WHERE MATCH(c-(r)->ca)
-    AND r.status = 'Ð—Ð°Ð²ÐµÑ€ÑˆÐµÐ½Ð°'
-    AND r.actualReturnDate IS NOT NULL
-    AND r.actualReturnDate >= DATEFROMPARTS(YEAR(GETDATE()-100), MONTH(GETDATE()-100), 1)
-    AND r.actualReturnDate < DATEADD(DAY, 1, CAST(GETDATE() AS DATE))
-GROUP BY CAST(r.actualReturnDate AS DATE)
+WHERE MATCH(o-(h)->ca)
+    AND h.rentalStatus = 'Çàâåðøåíà'
+    AND h.actualReturnDate IS NOT NULL
+    AND h.actualReturnDate >= DATEFROMPARTS(YEAR(GETDATE()-100), MONTH(GETDATE()-100), 1)
+    AND h.actualReturnDate < DATEADD(DAY, 1, CAST(GETDATE() AS DATE))
+GROUP BY CAST(h.actualReturnDate AS DATE)
 ORDER BY return_date DESC;
 
 SELECT 
@@ -19,13 +19,13 @@ SELECT
     SUM(r.rentalCost) AS daily_revenue
 FROM Rental r
 WHERE 
-    r.status = 'Ð—Ð°Ð²ÐµÑ€ÑˆÐµÐ½Ð°'
+    r.status = 'Çàâåðøåíà'
     AND r.actualReturnDate >= DATEFROMPARTS(YEAR(GETDATE()-100), MONTH(GETDATE()-100), 1)
     AND CAST(r.actualReturnDate AS DATE) < CAST(GETDATE() + 1 AS DATE)
 GROUP BY CAST(r.actualReturnDate AS DATE)
 ORDER BY return_date;
 
--- Ð”Ð»Ñ ÐºÐ°Ð¶Ð´Ð¾Ð³Ð¾ Ñ‚Ð¸Ð¿Ð° Ð¸ Ð¼Ð¾Ð´ÐµÐ»Ð¸ Ð°Ð²Ñ‚Ð¾Ð¼Ð¾Ð±Ð¸Ð»Ñ Ð²Ñ‹Ð²ÐµÑÑ‚Ð¸ ÐºÐ¾Ð»Ð¸Ñ‡ÐµÑÑ‚Ð²Ð¾ Ð¼Ð°ÑˆÐ¸Ð½
+-- 2. Äëÿ êàæäîãî òèïà è ìîäåëè àâòîìîáèëÿ âûâåñòè êîëè÷åñòâî ìàøèí
 SELECT 
     m.type AS car_type,
     m.name AS model_name,
@@ -33,9 +33,9 @@ SELECT
     COUNT(ca.licensePlate) AS car_count
 FROM 
     ModelNode m,
-    HAS_MODEL hm,
+    OF_MODEL om,
     CarNode ca
-WHERE MATCH(ca-(hm)->m)
+WHERE MATCH(ca-(om)->m)
 GROUP BY m.type, m.name, m.manufacturer
 ORDER BY m.type, car_count DESC;
 
@@ -50,7 +50,7 @@ LEFT JOIN Car c ON m.id = c.modelId
 GROUP BY m.type, m.name, m.manufacturer
 ORDER BY m.type, car_count DESC;
 
--- ÐÐ°Ð¹Ñ‚Ð¸ Ð¼Ð¾Ð´ÐµÐ»Ð¸, Ð½Ðµ Ð¿Ð¾Ð»ÑŒÐ·ÑƒÑŽÑ‰Ð¸ÐµÑÑ ÑÐ¿Ñ€Ð¾ÑÐ¾Ð¼ (Ñ Ð½Ð°Ñ‡Ð°Ð»Ð° Ñ‚ÐµÐºÑƒÑ‰ÐµÐ³Ð¾ Ð³Ð¾Ð´Ð°)
+-- 3. Íàéòè ìîäåëè, íå ïîëüçóþùèåñÿ ñïðîñîì (ñ íà÷àëà òåêóùåãî ãîäà)
 SELECT 
     m.id,
     m.name,
@@ -61,36 +61,14 @@ WHERE m.id NOT IN (
     SELECT DISTINCT m2.id
     FROM 
         ModelNode m2,
-        HAS_MODEL hm,
-        CarNode ca
-    WHERE MATCH(ca-(hm)->m2) 
-        AND EXISTS (
-            SELECT 1 
-            FROM RENTED r2 
-            WHERE r2.$to_id = ca.$node_id
-                AND r2.startDate >= DATEFROMPARTS(YEAR(GETDATE()), 1, 1)
-                AND r2.status IN ('ÐÐºÑ‚Ð¸Ð²Ð½Ð°', 'Ð—Ð°Ð²ÐµÑ€ÑˆÐµÐ½Ð°')
-        )
-);
-
-SELECT 
-    m.id,
-    m.name,
-    m.type,
-    m.manufacturer
-FROM ModelNode m
-WHERE m.id NOT IN (
-    SELECT DISTINCT m2.id
-    FROM 
-        ModelNode m2,
-        HAS_MODEL hm,
+        OF_MODEL om,
         CarNode ca,
-        RENTED r2,
-        ClientNode cl
-    WHERE MATCH(ca-(hm)->m2 AND cl-(r2)->ca) 
-        AND r2.startDate >= DATEFROMPARTS(YEAR(GETDATE()), 1, 1)
-        AND r2.status IN ('ÐÐºÑ‚Ð¸Ð²Ð½Ð°', 'Ð—Ð°Ð²ÐµÑ€ÑˆÐµÐ½Ð°')
-)
+        HAS h,
+        OrderNode o
+    WHERE MATCH(ca-(om)->m2 AND o-(h)->ca)
+        AND h.startDate >= DATEFROMPARTS(YEAR(GETDATE()), 1, 1)
+        AND h.rentalStatus IN ('Àêòèâíà', 'Çàâåðøåíà')
+);
 
 SELECT 
     m.id,
@@ -104,23 +82,24 @@ WHERE m.id NOT IN (
     JOIN Rental r ON c.licensePlate = r.carLicensePlate
     WHERE 
         r.startDate >= DATEFROMPARTS(YEAR(GETDATE()), 1, 1)
-        AND r.status IN ('ÐÐºÑ‚Ð¸Ð²Ð½Ð°', 'Ð—Ð°Ð²ÐµÑ€ÑˆÐµÐ½Ð°')
+        AND r.status IN ('Àêòèâíà', 'Çàâåðøåíà')
 )
 ORDER BY m.manufacturer, m.name;
 
--- ÐÐ°Ð¹Ñ‚Ð¸ Ð¿Ð¾ÑÑ‚Ð¾ÑÐ½Ð½Ñ‹Ñ… ÐºÐ»Ð¸ÐµÐ½Ñ‚Ð¾Ð² (Ð±Ð¾Ð»ÐµÐµ 3-Ñ… Ñ€Ð°Ð·) Ñ Ñ€Ð°ÑÑ‡Ñ‘Ñ‚Ð¾Ð¼ ÑÐºÐ¸Ð´ÐºÐ¸
-
+-- 4. Íàéòè ïîñòîÿííûõ êëèåíòîâ (áîëåå 3-õ ðàç) ñ ðàñ÷¸òîì ñêèäêè
 WITH ClientRentals AS (
     SELECT 
         c.passport,
         c.fullName,
-        COUNT(r.$edge_id) AS rental_count
+        COUNT(h.$edge_id) AS rental_count
     FROM 
         ClientNode c,
-        RENTED r,
+        PLACES_ORDER po,
+        OrderNode o,
+        HAS h,
         CarNode ca
-    WHERE MATCH(c-(r)->ca)
-        AND r.status IN ('Ð—Ð°Ð²ÐµÑ€ÑˆÐµÐ½Ð°', 'ÐÐºÑ‚Ð¸Ð²Ð½Ð°')
+    WHERE MATCH(c-(po)->o-(h)->ca)
+        AND h.rentalStatus IN ('Çàâåðøåíà', 'Àêòèâíà')
     GROUP BY c.passport, c.fullName
 ),
 ClientFines AS (
@@ -129,14 +108,13 @@ ClientFines AS (
         1 AS has_fines
     FROM 
         ClientNode c,
-        RENTED r,
-        CarNode ca,
-        ORDER_CONTAINS_CAR occ,
+        PLACES_ORDER po,
         OrderNode o,
-        ORDER_HAS_FINE ohf,
-        FineNode f
-    WHERE MATCH(c-(r)->ca AND o-(occ)->ca AND o-(ohf)->f)
-        AND r.status IN ('Ð—Ð°Ð²ÐµÑ€ÑˆÐµÐ½Ð°', 'ÐÐºÑ‚Ð¸Ð²Ð½Ð°')
+        HAS h,
+        CarNode ca
+    WHERE MATCH(c-(po)->o-(h)->ca)
+        AND h.rentalStatus IN ('Çàâåðøåíà', 'Àêòèâíà')
+        AND h.fineAmount > 0
     GROUP BY c.passport
 )
 SELECT 
@@ -153,9 +131,8 @@ SELECT
     END AS discount_percent
 FROM ClientRentals cr
 LEFT JOIN ClientFines cf ON cr.passport = cf.passport
--- WHERE cr.rental_count > 3 
+--WHERE cr.rental_count > 3 
 ORDER BY cr.rental_count DESC;
-
 
 WITH ClientStats AS (
     SELECT 
@@ -167,7 +144,7 @@ WITH ClientStats AS (
     JOIN RentalOrder ro ON c.passport = ro.clientPassport
     JOIN Rental r ON ro.id = r.rentalOrderId
     LEFT JOIN RentalFine rf ON r.id = rf.rentalId
-    WHERE r.status IN ('Ð—Ð°Ð²ÐµÑ€ÑˆÐµÐ½Ð°', 'ÐÐºÑ‚Ð¸Ð²Ð½Ð°')
+    WHERE r.status IN ('Çàâåðøåíà', 'Àêòèâíà')
     GROUP BY c.passport, c.fullName
     --HAVING COUNT(r.id) > 3
 )
@@ -186,20 +163,22 @@ SELECT
 FROM ClientStats
 ORDER BY rental_count DESC;
 
--- ÐÐ°Ð¹Ñ‚Ð¸ ÐºÐ»Ð¸ÐµÐ½Ñ‚Ð¾Ð², Ð½Ð°Ð¸Ð±Ð¾Ð»ÐµÐµ Ñ‡Ð°ÑÑ‚Ð¾ Ð¿Ð¾Ð»ÑŒÐ·ÑƒÑŽÑ‰Ð¸Ñ…ÑÑ ÑƒÑÐ»ÑƒÐ³Ð°Ð¼Ð¸ Ð¿Ñ€Ð¾ÐºÐ°Ñ‚Ð°
+-- 5. Íàéòè êëèåíòîâ, íàèáîëåå ÷àñòî ïîëüçóþùèõñÿ óñëóãàìè ïðîêàòà
 SELECT TOP 10
     c.passport,
     c.fullName,
     c.phone,
-    COUNT(DISTINCT r.startDate) AS rentals_count,
-    SUM(r.rentalCost) AS total_spent
+    COUNT(h.$edge_id) AS rentals_count,
+    SUM(h.rentalCost) AS total_spent
 FROM 
     ClientNode c,
-    RENTED r,
+    PLACES_ORDER po,
+    OrderNode o,
+    HAS h,
     CarNode ca
-WHERE MATCH(c-(r)->ca)
-    AND r.status IN ('Ð—Ð°Ð²ÐµÑ€ÑˆÐµÐ½Ð°', 'ÐÐºÑ‚Ð¸Ð²Ð½Ð°')
-    AND r.rentalCost > 0
+WHERE MATCH(c-(po)->o-(h)->ca)
+    AND h.rentalStatus IN ('Çàâåðøåíà', 'Àêòèâíà')
+    AND h.rentalCost > 0
 GROUP BY c.passport, c.fullName, c.phone
 ORDER BY total_spent DESC, rentals_count DESC;
 
@@ -213,7 +192,7 @@ SELECT TOP 10 With ties
 FROM Client c
 JOIN RentalOrder ro ON c.passport = ro.clientPassport
 JOIN Rental r ON ro.id = r.rentalOrderId
-WHERE r.status IN ('Ð—Ð°Ð²ÐµÑ€ÑˆÐµÐ½Ð°', 'ÐÐºÑ‚Ð¸Ð²Ð½Ð°')
+WHERE r.status IN ('Çàâåðøåíà', 'Àêòèâíà')
 GROUP BY c.passport, c.fullName, c.phone
 HAVING COUNT(r.id) > 0
 ORDER BY total_spent DESC

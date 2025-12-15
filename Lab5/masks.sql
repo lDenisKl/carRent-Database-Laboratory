@@ -1,11 +1,11 @@
 USE [Cars1];
 GO
 
--- Добавляем маскирование для номера телефона (частичное скрытие)
+-- Добавляем маскирование для номера телефона
 ALTER TABLE Client
 ALTER COLUMN phone ADD MASKED WITH (FUNCTION = 'partial(3,"XXX-XXX-",5)');
 
--- Добавляем маскирование для паспорта (полное скрытие для сотрудников)
+-- Добавляем маскирование для паспорта
 ALTER TABLE Client
 ALTER COLUMN passport ADD MASKED WITH (FUNCTION = 'default()');
 
@@ -13,10 +13,11 @@ ALTER COLUMN passport ADD MASKED WITH (FUNCTION = 'default()');
 --ALTER TABLE Client
 --ALTER COLUMN address DROP MASKED;
 
-GRANT UNMASK TO ManagerRole;
+REVOKE UNMASK TO ManagerRole;
+GRANT UNMASK ON OBJECT::dbo.Client([phone]) TO ManagerRole;
 GO
 
---EXECUTE AS USER = 'User1_d.kolodochka';
+EXECUTE AS USER = 'User1_d.kolodochka';
 SELECT * FROM Client
 --REVERT
 

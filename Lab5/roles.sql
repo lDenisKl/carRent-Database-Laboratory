@@ -128,10 +128,19 @@ USE [Cars1];
 GO
 
 -- Пытаемся выполнить от User1
+REVOKE SELECT ON dbo.Fine FROM [User1_d.kolodochka];
 SELECT * FROM Fine;
+Revert;
+
+REVOKE SELECT ON dbo.Fine To [User_d.kolodochka]
+
 
 -- Передаём права и пробуем еще раз
 GRANT SELECT ON dbo.Fine TO [User1_d.kolodochka] as ManagerRole;
+
+REVOKE SELECT ON dbo.Fine FROM [User1_d.kolodochka] as ManagerRole;
+
+REVOKE GRANT OPTION FOR SELECT ON dbo.Fine FROM ManagerRole CASCADE
 
 -- УДАЛЕНИЕ РОЛЕЙ И ПОЛЬЗОВАТЕЛЕЙ
 USE [Cars1];
