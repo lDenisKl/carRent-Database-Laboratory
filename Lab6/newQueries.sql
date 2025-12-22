@@ -20,6 +20,7 @@ SELECT
 FROM Rental r
 WHERE 
     r.status = 'Завершена'
+    AND r.actualReturnDate IS NOT NULL
     AND r.actualReturnDate >= DATEFROMPARTS(YEAR(GETDATE()-100), MONTH(GETDATE()-100), 1)
     AND CAST(r.actualReturnDate AS DATE) < CAST(GETDATE() + 1 AS DATE)
 GROUP BY CAST(r.actualReturnDate AS DATE)
@@ -38,7 +39,6 @@ FROM
 WHERE MATCH(ca-(om)->m)
 GROUP BY m.type, m.name, m.manufacturer
 ORDER BY m.type, car_count DESC;
-
 
 SELECT 
     m.type AS car_type,

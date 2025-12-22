@@ -124,7 +124,6 @@ INSERT INTO Model (name, type, manufacturer, dailyPrice) VALUES
 INSERT INTO Car (licensePlate, year, color, condition, modelId) VALUES
 -- Toyota (10 авто)
 
-('Х410ХХ777', 2002, 'Серебристый', 'Плохое', 1);
 
 ('А001АА777', 2023, 'Белый', 'Идеальное', 1),
 ('А002АА777', 2024, 'Черный', 'Идеальное', 2),
@@ -165,7 +164,7 @@ INSERT INTO Car (licensePlate, year, color, condition, modelId) VALUES
 ('Х401ХХ777', 2024, 'Черный', 'Идеальное', 24),
 ('Х402ХХ777', 2023, 'Белый', 'Идеальное', 25),
 ('Х403ХХ777', 2024, 'Серебристый', 'Идеальное', 26),
-('Х404ХХ777', 2024, 'Синий', 'Идеальное', 27),;
+('Х404ХХ777', 2024, 'Синий', 'Идеальное', 27);
 
 -- Клиенты
 INSERT INTO Client (passport, fullName, address, phone) VALUES
