@@ -4,7 +4,7 @@ db.weather.aggregate([
     {
         $match: {
             temperature: { $lt: 0 },
-            code: { $ne: "CL", $ne: "BR" }
+            code: { $ne: "CL", $ne: "BR", $ne: "FG", $ne: "FZ" }
         }
     },
     {

@@ -7,23 +7,20 @@ db.weather.aggregate([
                 month: "$month",
                 day: "$day"
             },
-            total_measurements: { $sum: 1 },
-            clear_measurements: {
+            total: { $sum: 1 },
+            clear: {
                 $sum: { $cond: [{ $eq: ["$code", "CL"] }, 1, 0] }
             },
-            has_precipitation: {
+            has_os: {
                 $max: { $cond: [{ $ne: ["$code", "CL"] }, 1, 0] }
             }
         }
     },
     {
         $addFields: {
-            clear_day_ratio: {
-                $divide: ["$clear_measurements", "$total_measurements"]
-            },
             is_clear_day: {
                 $gt: [
-                    { $divide: ["$clear_measurements", "$total_measurements"] },
+                    { $divide: ["$clear", "$total"] },
                     0.75
                 ]
             }
@@ -38,8 +35,8 @@ db.weather.aggregate([
         $group: {
             _id: null,
             total_clear_days: { $sum: 1 },
-            clear_days_with_precipitation: {
-                $sum: "$has_precipitation"
+            clear_with_os: {
+                $sum: "$has_os"
             }
         }
     },
@@ -51,14 +48,14 @@ db.weather.aggregate([
                     0,
                     {
                         $multiply: [
-                            { $divide: ["$clear_days_with_precipitation", "$total_clear_days"] },
+                            { $divide: ["$clear_with_os", "$total_clear_days"] },
                             100
                         ]
                     }
                 ]
             },
             total_clear_days: 1,
-            clear_days_with_precipitation: 1,
+            clear_with_os: 1,
             _id: 0
         }
     }

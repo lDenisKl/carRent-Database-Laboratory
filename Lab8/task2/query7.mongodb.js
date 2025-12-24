@@ -18,11 +18,5 @@ db.weather.aggregate([
                 }
             }
         }
-    },
-    {
-        $project: {
-            temp_change: { $round: ["$delta", 4] },
-            _id: 0
-        }
     }
 ])
