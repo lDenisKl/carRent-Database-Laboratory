@@ -1,0 +1,14 @@
+-- SERIALIZABLE 1 сеанс
+
+USE [Cars1]
+GO
+
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+BEGIN TRANSACTION;
+
+SELECT * FROM CarTest WHERE year > 2022;
+-- Переходим в сеанс 2
+
+-- Завершаем транзакцию
+SELECT * FROM CarTest WHERE year > 2022;
+COMMIT;
